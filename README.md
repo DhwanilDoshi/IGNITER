@@ -1,6 +1,6 @@
 # IGNITER
 ### Multimodal EV Interior Experience Research Platform
-**Smart India Hackathon 2024 — Problem Statement #25221**
+**Smart India Hackathon 2025 — Problem Statement #25221**
 
 > *VR + Eye-Tracking Solution to Capture Customer Reactions for EV Product Design*
 
