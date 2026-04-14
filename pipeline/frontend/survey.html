@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IGNITER — Survey</title>
+<style>
+  :root {
+    --bg: #0a0c10; --card: #13161d; --border: #1e2330;
+    --accent: #00c8ff; --accent2: #7c5cfc; --text: #e2e8f0;
+    --muted: #6b7280; --good: #22c55e; --danger: #ef4444;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh; padding: 32px 24px;
+  }
+  .page { max-width: 680px; margin: 0 auto; }
+  .header { text-align: center; margin-bottom: 40px; }
+  .header h1 {
+    font-size: 1.6rem; font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    letter-spacing: 2px;
+  }
+  .header p { color: var(--muted); margin-top: 8px; font-size: 0.9rem; }
+
+  /* Top-areas summary */
+  .top-areas {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 32px; justify-content: center;
+  }
+  .area-chip {
+    padding: 6px 16px;
+    background: rgba(0,200,255,0.08);
+    border: 1px solid var(--accent);
+    border-radius: 20px;
+    font-size: 0.8rem; color: var(--accent);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .area-chip .t { font-weight: 700; }
+
+  /* Section cards */
+  .section {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 24px; margin-bottom: 20px;
+  }
+  .section-label {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 1.5px;
+    color: var(--accent2); text-transform: uppercase; margin-bottom: 16px;
+  }
+  .q-block { margin-bottom: 24px; }
+  .q-block:last-child { margin-bottom: 0; }
+  .q-text { font-size: 0.92rem; color: var(--text); margin-bottom: 10px; line-height: 1.5; }
+
+  /* Rating stars (1-5) */
+  .stars { display: flex; gap: 6px; }
+  .stars input[type=radio] { display: none; }
+  .stars label {
+    font-size: 1.5rem; cursor: pointer; opacity: 0.3;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .stars input[type=radio]:checked ~ label { opacity: 0.3; }
+  .stars label:hover,
+  .stars label:hover ~ label { opacity: 0.3; }
+  .stars input[type=radio]:checked + label,
+  .stars input[type=radio]:checked + label ~ label { opacity: 1; }
+  /* Flip star trick: RTL container */
+  .stars { direction: rtl; display: inline-flex; }
+  .stars label:hover,
+  .stars label:hover ~ label { opacity: 1; }
+
+  /* Text answer */
+  textarea {
+    width: 100%; background: #0d0f14; border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); padding: 10px 14px;
+    font-size: 0.9rem; resize: vertical; min-height: 72px; outline: none;
+    font-family: inherit; transition: border-color 0.2s;
+  }
+  textarea:focus { border-color: var(--accent); }
+
+  /* Scale 1-10 */
+  .scale10 { display: flex; gap: 6px; flex-wrap: wrap; }
+  .scale10 input[type=radio] { display: none; }
+  .scale10 label {
+    width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+    background: #0d0f14; border: 1px solid var(--border);
+    border-radius: 8px; cursor: pointer; font-size: 0.9rem; color: var(--muted);
+    transition: all 0.15s;
+  }
+  .scale10 input[type=radio]:checked + label {
+    background: var(--accent2); border-color: var(--accent2); color: #fff; font-weight: 700;
+  }
+
+  /* Would buy radio */
+  .yesno { display: flex; gap: 10px; }
+  .yesno input[type=radio] { display: none; }
+  .yesno label {
+    flex: 1; text-align: center; padding: 10px;
+    background: #0d0f14; border: 1px solid var(--border);
+    border-radius: 8px; cursor: pointer; font-size: 0.88rem; color: var(--muted);
+    transition: all 0.15s;
+  }
+  .yesno input[type=radio]:checked + label {
+    border-color: var(--accent); color: var(--accent);
+    background: rgba(0,200,255,0.08);
+  }
+
+  .divider { border-top: 1px solid var(--border); margin: 20px 0; }
+  .btn-submit {
+    width: 100%; padding: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; border-radius: 10px; color: #000;
+    font-size: 1rem; font-weight: 700; cursor: pointer;
+    letter-spacing: 1px; transition: opacity 0.2s;
+  }
+  .btn-submit:hover { opacity: 0.9; }
+  .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; }
+  #status { text-align: center; margin-top: 14px; font-size: 0.88rem; color: var(--muted); }
+
+  .loading { text-align: center; padding: 80px 0; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <h1>IGNITER</h1>
+    <p>Thank you for exploring the EV interior!<br>
+       Your AI-based session analysis is complete. Please answer a few targeted questions.</p>
+  </div>
+
+  <div id="content">
+    <div class="loading">Loading your session data…</div>
+  </div>
+</div>
+
+<script>
+const params     = new URLSearchParams(location.search);
+const SESSION_ID = params.get("session_id") || "";
+
+if (!SESSION_ID) { location.href = "/"; }
+
+const EMOTION_EMOJI = {
+  Happy:"😊", Surprise:"😲", Neutral:"😐",
+  Sad:"😢", Fear:"😨", Angry:"😠", Disgust:"🤢", unknown:"❓"
+};
+
+async function loadAndRender() {
+  let summary;
+  try {
+    const res = await fetch(`/api/session/${SESSION_ID}/summary`);
+    if (!res.ok) throw new Error("Session not found");
+    summary = await res.json();
+  } catch (e) {
+    document.getElementById("content").innerHTML =
+      `<div class="loading" style="color:var(--danger)">Error loading session: ${e.message}</div>`;
+    return;
+  }
+
+  const topParts = (summary.top_parts || []).slice(0, 5);
+  const questions = summary.survey_questions || [];
+
+  // ── Top areas chips ────────────────────────────────────────────────────────
+  let chipsHtml = "";
+  topParts.forEach(({part, validated_seconds}) => {
+    const detail  = (summary.part_detail || {})[part] || {};
+    const emo     = detail.dominant_emotion || "unknown";
+    const emoji   = EMOTION_EMOJI[emo] || "❓";
+    chipsHtml += `<div class="area-chip">${emoji} ${part} <span class="t">${validated_seconds}s</span></div>`;
+  });
+
+  // ── Group questions by part ───────────────────────────────────────────────
+  const grouped = {};
+  questions.forEach(q => {
+    const key = q.part;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(q.question);
+  });
+
+  let sectionsHtml = "";
+  let qIndex = 0;
+
+  // Targeted questions first
+  const partKeys = Object.keys(grouped).filter(k => k !== "general");
+  partKeys.forEach(part => {
+    const qs = grouped[part];
+    const detail = (summary.part_detail || {})[part] || {};
+    const emo = detail.dominant_emotion || "";
+    const emoEmoji = EMOTION_EMOJI[emo] || "";
+    const validSec = (detail.validated_seconds || 0).toFixed(1);
+
+    sectionsHtml += `
+    <div class="section">
+      <div class="section-label">Area Focus: ${part} ${emoEmoji} — ${validSec}s gaze</div>`;
+
+    qs.forEach(question => {
+      const name = `q${qIndex++}`;
+      sectionsHtml += `
+      <div class="q-block">
+        <div class="q-text">${question}</div>
+        <div class="stars">
+          ${[5,4,3,2,1].map(v =>
+            `<input type="radio" name="${name}" id="${name}_${v}" value="${v}">
+             <label for="${name}_${v}" title="${v} star${v>1?'s':''}">★</label>`
+          ).join("")}
+        </div>
+      </div>`;
+    });
+    sectionsHtml += `</div>`;
+  });
+
+  // General questions
+  const genQs = grouped["general"] || [];
+  if (genQs.length) {
+    sectionsHtml += `<div class="section"><div class="section-label">Overall Experience</div>`;
+
+    // First general q is the 1-10 rating
+    const overallQ = genQs[0];
+    sectionsHtml += `
+    <div class="q-block">
+      <div class="q-text">${overallQ}</div>
+      <div class="scale10">
+        ${Array.from({length:10},(_,i)=>i+1).map(v =>
+          `<input type="radio" name="overall_rating" id="or${v}" value="${v}">
+           <label for="or${v}">${v}</label>`
+        ).join("")}
+      </div>
+    </div>`;
+
+    // Remaining general questions as text
+    genQs.slice(1, 3).forEach(q => {
+      const name = `q${qIndex++}`;
+      sectionsHtml += `
+      <div class="q-block">
+        <div class="q-text">${q}</div>
+        <textarea name="${name}" placeholder="Your answer…"></textarea>
+      </div>`;
+    });
+
+    // Would you buy question
+    sectionsHtml += `
+    <div class="q-block">
+      <div class="q-text">${genQs[3] || "Would this interior design influence you to consider purchasing this EV?"}</div>
+      <div class="yesno">
+        <input type="radio" name="would_buy" id="wb_yes" value="yes">
+        <label for="wb_yes">Yes, definitely</label>
+        <input type="radio" name="would_buy" id="wb_maybe" value="maybe">
+        <label for="wb_maybe">Maybe</label>
+        <input type="radio" name="would_buy" id="wb_no" value="no">
+        <label for="wb_no">Not likely</label>
+      </div>
+    </div>`;
+
+    sectionsHtml += `</div>`;
+  }
+
+  document.getElementById("content").innerHTML = `
+    <div class="top-areas">${chipsHtml}</div>
+    <form id="surveyForm">
+      ${sectionsHtml}
+      <div class="divider"></div>
+      <button type="submit" class="btn-submit">Submit & View Report →</button>
+      <p id="status"></p>
+    </form>`;
+
+  document.getElementById("surveyForm").addEventListener("submit", submitSurvey);
+}
+
+async function submitSurvey(e) {
+  e.preventDefault();
+  const btn = document.querySelector(".btn-submit");
+  const status = document.getElementById("status");
+  btn.disabled = true;
+  btn.textContent = "Submitting…";
+
+  const form    = e.target;
+  const data    = new FormData(form);
+  const answers = {};
+  for (const [key, val] of data.entries()) {
+    answers[key] = val;
+  }
+  // also grab textareas by name
+  form.querySelectorAll("textarea").forEach(ta => {
+    if (ta.name) answers[ta.name] = ta.value;
+  });
+
+  try {
+    const res = await fetch(`/api/session/${SESSION_ID}/survey`, {
+      method:  "POST",
+      headers: {"Content-Type": "application/json"},
+      body:    JSON.stringify(answers),
+    });
+    if (!res.ok) throw new Error("Submit failed");
+    status.textContent = "Saved! Redirecting to your report…";
+    status.style.color = "var(--good)";
+    setTimeout(() => {
+      window.location.href = `/report?session_id=${SESSION_ID}`;
+    }, 1200);
+  } catch (err) {
+    status.textContent = "Error: " + err.message;
+    status.style.color = "var(--danger)";
+    btn.disabled = false;
+    btn.textContent = "Submit & View Report →";
+  }
+}
+
+loadAndRender();
+</script>
+</body>
+</html>

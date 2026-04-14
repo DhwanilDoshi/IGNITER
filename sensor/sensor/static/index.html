@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Live Sensor Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #0d0f12;
+        color: #e8eef1;
+        margin: 20px;
+    }
+    h1 { margin-bottom: 8px; }
+    .status { margin-bottom: 12px; color: #9ab; }
+    .container { display: flex; gap: 16px; flex-wrap: wrap; }
+    .card {
+        padding: 14px;
+        border-radius: 10px;
+        background: #15181d;
+        min-width: 260px;
+    }
+    .chart-row {
+        display: flex;
+        gap: 20px;
+        justify-content: space-between;
+        margin-top: 25px;
+    }
+    .chart-box {
+        flex: 1;
+        background: #15181d;
+        padding: 10px;
+        border-radius: 10px;
+        text-align: center;
+    }
+    canvas {
+        width: 100% !important;
+        height: 180px !important;
+        background: #0d0f12;
+        border-radius: 10px;
+        padding: 5px;
+    }
+    button {
+        background: #2a7;
+        padding: 5px 10px;
+        border: none;
+        border-radius: 6px;
+        color: #000;
+        cursor: pointer;
+        margin-top: 5px;
+        margin-right: 5px;
+    }
+</style>
+</head>
+
+<body>
+
+<h1>Live Sensor Dashboard</h1>
+<div id="status" class="status">Connecting...</div>
+
+<div class="container">
+    <div class="card">
+        <div class="label">BPM</div>
+        <div id="bpm" class="value">--</div>
+
+        <div class="label">GSR</div>
+        <div id="gsr" class="value">--</div>
+
+        <div class="label">Stress Level</div>
+        <div id="stress_level" class="value">--</div>
+    </div>
+
+    <div class="card" style="flex:1;">
+        <div class="label">Latest Payload</div>
+        <pre id="payload" style="height:200px; overflow:auto;"></pre>
+        <button id="exportCSV">Download CSV (Full History)</button>
+    </div>
+</div>
+
+<h2>Live Graphs</h2>
+
+<div class="chart-row">
+
+    <div class="chart-box">
+        <h3>BPM</h3>
+        <canvas id="bpmChart"></canvas>
+        <button onclick="downloadChart(bpmChart, 'bpm_graph.png')">Download Graph</button>
+    </div>
+
+    <div class="chart-box">
+        <h3>GSR</h3>
+        <canvas id="gsrChart"></canvas>
+        <button onclick="downloadChart(gsrChart, 'gsr_graph.png')">Download Graph</button>
+    </div>
+
+    <div class="chart-box">
+        <h3>Stress</h3>
+        <canvas id="stressChart"></canvas>
+        <button onclick="downloadChart(stressChart, 'stress_graph.png')">Download Graph</button>
+    </div>
+
+</div>
+
+<script>
+// ---------------- CONFIG ----------------
+const WS_URL = `ws://${location.hostname}:8000/ws`;
+
+// Store full history for CSV export
+let historyData = [];
+
+const statusEl = document.getElementById("status");
+const bpmEl = document.getElementById("bpm");
+const gsrEl = document.getElementById("gsr");
+const stressEl = document.getElementById("stress_level");
+const payloadEl = document.getElementById("payload");
+
+// ---------------- CHART FACTORY ----------------
+function buildChart(canvasId, label, color, ymin, ymax) {
+    return new Chart(document.getElementById(canvasId), {
+        type: "line",
+        data: {
+            labels: [],
+            datasets: [{
+                label: label,
+                data: [],
+                borderColor: color,
+                tension: 0.3,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            animation: false,
+            scales: {
+                x: { display: false },
+                y: { 
+                    min: ymin,
+                    max: ymax,
+                    grid: { color: "rgba(255,255,255,0.1)" }
+                }
+            }
+        }
+    });
+}
+
+// FIXED RANGES
+let bpmChart = buildChart("bpmChart", "BPM", "cyan", 78, 87);
+let gsrChart = buildChart("gsrChart", "GSR", "orange", 0, 2000);
+let stressChart = buildChart("stressChart", "Stress", "red", 0, 1);
+
+// ---------------- UPDATE CHART ----------------
+function updateChart(chart, value) {
+    chart.data.labels.push("");
+
+    chart.data.datasets[0].data.push(value);
+
+    // Keep last 50 data points ONLY
+    if (chart.data.labels.length > 10) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+    }
+
+    chart.update();
+}
+
+// ---------------- WEBSOCKET ----------------
+function connectWS() {
+    const ws = new WebSocket(WS_URL);
+
+    ws.onopen = () => statusEl.textContent = "Connected ✔";
+
+    ws.onclose = () => {
+        statusEl.textContent = "Disconnected — retrying…";
+        setTimeout(connectWS, 1000);
+    };
+
+    ws.onmessage = (ev) => {
+        let obj;
+        try { obj = JSON.parse(ev.data); } catch { return; }
+
+        // UI
+        bpmEl.textContent = obj.bpm;
+        gsrEl.textContent = obj.gsr;
+        stressEl.textContent = obj.stress_level;
+
+        payloadEl.textContent = JSON.stringify(obj, null, 2);
+
+        // Add to FULL HISTORY (unlimited)
+        historyData.push(obj);
+
+        // Graph updates (ONLY LAST 50 SHOWN)
+        updateChart(bpmChart, obj.bpm);
+        updateChart(gsrChart, obj.gsr);
+        updateChart(stressChart, obj.stress);
+    };
+}
+
+connectWS();
+
+// ---------------- CSV EXPORT ----------------
+document.getElementById("exportCSV").onclick = () => {
+    if (!historyData.length) {
+        alert("No data to export!");
+        return;
+    }
+
+    const keys = ["timestamp","bpm","gsr","hrv","hrv_sdnn","stress","ml_stress","ml_confidence","stress_level"];
+    let csv = keys.join(",") + "\n";
+
+    for (let row of historyData) {
+        csv += keys.map(k => JSON.stringify(row[k] ?? "")).join(",") + "\n";
+    }
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "sensor_data_full_history.csv";
+    a.click();
+};
+
+// ---------------- DOWNLOAD GRAPH ----------------
+function downloadChart(chart, filename) {
+    const a = document.createElement("a");
+    a.href = chart.toBase64Image();
+    a.download = filename;
+    a.click();
+}
+</script>
+
+</body>
+</html>

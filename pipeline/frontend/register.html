@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IGNITER — Participant Registration</title>
+<style>
+  :root {
+    --bg: #0a0c10;
+    --card: #13161d;
+    --border: #1e2330;
+    --accent: #00c8ff;
+    --accent2: #7c5cfc;
+    --text: #e2e8f0;
+    --muted: #6b7280;
+    --danger: #ef4444;
+    --success: #22c55e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .wrapper {
+    width: 100%;
+    max-width: 560px;
+  }
+  .logo {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .logo h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 3px;
+  }
+  .logo p { color: var(--muted); font-size: 0.9rem; margin-top: 6px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+  }
+  .card h2 { font-size: 1.2rem; margin-bottom: 24px; color: var(--accent); }
+  .field { margin-bottom: 20px; }
+  label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
+  input[type=text], input[type=number], select, textarea {
+    width: 100%;
+    background: #0d0f14;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 10px 14px;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .experience-scale {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .experience-scale input[type=radio] { display: none; }
+  .experience-scale label {
+    flex: 1;
+    text-align: center;
+    padding: 8px 4px;
+    background: #0d0f14;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--muted);
+    transition: all 0.15s;
+    margin: 0;
+  }
+  .experience-scale input[type=radio]:checked + label {
+    background: var(--accent2);
+    border-color: var(--accent2);
+    color: #fff;
+    font-weight: 600;
+  }
+  .exp-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 4px;
+    padding: 0 2px;
+  }
+  .checkboxes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .checkboxes input[type=checkbox] { display: none; }
+  .checkboxes label {
+    padding: 6px 12px;
+    background: #0d0f14;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    color: var(--muted);
+    transition: all 0.15s;
+    margin: 0;
+  }
+  .checkboxes input[type=checkbox]:checked + label {
+    background: rgba(0,200,255,0.12);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .divider { border-top: 1px solid var(--border); margin: 24px 0; }
+  .btn-start {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    border-radius: 10px;
+    color: #000;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: opacity 0.2s;
+  }
+  .btn-start:hover { opacity: 0.9; }
+  .btn-start:disabled { opacity: 0.4; cursor: not-allowed; }
+  #err { color: var(--danger); font-size: 0.85rem; margin-top: 12px; display: none; }
+  .privacy { text-align: center; font-size: 0.75rem; color: var(--muted); margin-top: 16px; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="logo">
+    <h1>IGNITER</h1>
+    <p>EV Interior Experience Research Platform</p>
+  </div>
+
+  <div class="card">
+    <h2>Participant Details</h2>
+
+    <form id="regForm">
+      <div class="row">
+        <div class="field">
+          <label>Full Name *</label>
+          <input type="text" id="name" placeholder="Enter your name" required>
+        </div>
+        <div class="field">
+          <label>Age *</label>
+          <input type="number" id="age" placeholder="e.g. 28" min="16" max="80" required>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Gender</label>
+          <select id="gender">
+            <option value="">Prefer not to say</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Profession</label>
+          <input type="text" id="profession" placeholder="e.g. Engineer, Student">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>EV Familiarity Level *</label>
+        <div class="experience-scale">
+          <input type="radio" name="ev_exp" id="exp1" value="1"> <label for="exp1">1</label>
+          <input type="radio" name="ev_exp" id="exp2" value="2"> <label for="exp2">2</label>
+          <input type="radio" name="ev_exp" id="exp3" value="3"> <label for="exp3">3</label>
+          <input type="radio" name="ev_exp" id="exp4" value="4"> <label for="exp4">4</label>
+          <input type="radio" name="ev_exp" id="exp5" value="5"> <label for="exp5">5</label>
+        </div>
+        <div class="exp-labels">
+          <span>Never heard of EVs</span>
+          <span>Daily EV driver</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Have you owned or driven an EV?</label>
+        <select id="owned_ev">
+          <option value="no">No</option>
+          <option value="driven">Driven but not owned</option>
+          <option value="owned_one">Owned 1 EV</option>
+          <option value="owned_multiple">Owned multiple EVs</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>What matters most to you in an EV interior? (select all that apply)</label>
+        <div class="checkboxes">
+          <input type="checkbox" id="c1" value="Interior Comfort"> <label for="c1">Comfort</label>
+          <input type="checkbox" id="c2" value="Technology">       <label for="c2">Technology</label>
+          <input type="checkbox" id="c3" value="Safety">           <label for="c3">Safety</label>
+          <input type="checkbox" id="c4" value="Aesthetics">       <label for="c4">Aesthetics</label>
+          <input type="checkbox" id="c5" value="Storage Space">    <label for="c5">Storage</label>
+          <input type="checkbox" id="c6" value="Infotainment">     <label for="c6">Infotainment</label>
+          <input type="checkbox" id="c7" value="Ergonomics">       <label for="c7">Ergonomics</label>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <button type="submit" class="btn-start" id="startBtn">Begin Experience →</button>
+      <p id="err"></p>
+    </form>
+  </div>
+  <p class="privacy">Your data is used only for this research session and will not be shared.</p>
+</div>
+
+<script>
+document.getElementById("regForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById("startBtn");
+  const err = document.getElementById("err");
+  btn.disabled = true;
+  btn.textContent = "Starting…";
+  err.style.display = "none";
+
+  const priorities = [...document.querySelectorAll(".checkboxes input:checked")]
+    .map(el => el.value);
+  const ev_exp = document.querySelector('input[name="ev_exp"]:checked')?.value || null;
+
+  const payload = {
+    name:       document.getElementById("name").value.trim(),
+    age:        parseInt(document.getElementById("age").value),
+    gender:     document.getElementById("gender").value,
+    profession: document.getElementById("profession").value.trim(),
+    ev_exp:     ev_exp ? parseInt(ev_exp) : null,
+    owned_ev:   document.getElementById("owned_ev").value,
+    priorities,
+  };
+
+  try {
+    const res  = await fetch("/api/session/start", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Server error");
+    window.location.href = `/viewer?session_id=${data.session_id}`;
+  } catch (ex) {
+    err.textContent = "Error: " + ex.message;
+    err.style.display = "block";
+    btn.disabled = false;
+    btn.textContent = "Begin Experience →";
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>IGNITER — EV Interior Explorer</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum/build/pannellum.css">
+<script src="https://cdn.jsdelivr.net/npm/pannellum/build/pannellum.js"></script>
+<style>
+  :root {
+    --bg: #0a0c10;
+    --card: rgba(13,16,22,0.92);
+    --border: #1e2330;
+    --accent: #00c8ff;
+    --accent2: #7c5cfc;
+    --text: #e2e8f0;
+    --muted: #6b7280;
+    --good: #22c55e;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); overflow: hidden; }
+  #panorama { width: 100vw; height: 100vh; }
+  #canvas-mask { display: none; }
+
+  /* ── Top HUD bar ─────────────────────────────────────────── */
+  #hud-top {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 20px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(8px);
+  }
+  .hud-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-family: monospace;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    color: var(--text);
+    background: rgba(255,255,255,0.04);
+    white-space: nowrap;
+  }
+  .hud-badge span { color: var(--accent); }
+  #timer-badge { border-color: var(--warn); }
+  #timer-badge.urgent { border-color: var(--danger); color: var(--danger); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  .spacer { flex: 1; }
+  #btn-end {
+    padding: 6px 18px;
+    background: var(--danger);
+    border: none; border-radius: 8px;
+    color: #fff; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+  }
+
+  /* ── Part overlay (centre) ───────────────────────────────── */
+  #part-overlay {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+    z-index: 100;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 24px;
+    text-align: center;
+    backdrop-filter: blur(6px);
+    min-width: 220px;
+    transition: all 0.2s;
+  }
+  #part-name { font-size: 1.1rem; font-weight: 700; color: var(--accent); }
+  #part-dwell { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+
+  /* ── Side panel ──────────────────────────────────────────── */
+  #side-panel {
+    position: fixed; top: 60px; right: 20px; z-index: 100;
+    width: 200px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    backdrop-filter: blur(8px);
+  }
+  .sp-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .sp-label { font-size: 0.72rem; color: var(--muted); width: 60px; flex-shrink: 0; }
+  .sp-val { font-size: 0.82rem; font-weight: 600; color: var(--text); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  .dot.green { background: var(--good); }
+  .dot.yellow { background: var(--warn); }
+  .dot.red { background: var(--danger); }
+  .bar-wrap { background: #0d0f14; border-radius: 4px; height: 5px; flex: 1; }
+  .bar-fill { height: 5px; border-radius: 4px; background: var(--accent); transition: width 0.3s; }
+  #dwell-list { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+  .dwell-row {
+    display: flex; justify-content: space-between;
+    font-size: 0.72rem; margin-bottom: 5px; color: var(--muted);
+  }
+  .dwell-row strong { color: var(--text); }
+
+  /* ── Camera command modal ────────────────────────────────── */
+  #cam-modal {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.8); display: flex;
+    align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  #cam-modal .box {
+    background: #13161d; border: 1px solid var(--border);
+    border-radius: 16px; padding: 32px; max-width: 500px; width: 90%;
+  }
+  #cam-modal h2 { color: var(--accent); margin-bottom: 12px; }
+  #cam-modal p { color: var(--muted); font-size: 0.88rem; margin-bottom: 16px; line-height: 1.6; }
+  .cmd-box {
+    background: #0a0c10; border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 14px;
+    font-family: monospace; font-size: 0.85rem; color: var(--accent);
+    word-break: break-all; margin-bottom: 16px;
+    cursor: pointer;
+  }
+  .cmd-box:hover { border-color: var(--accent); }
+  #cam-modal .row { display: flex; gap: 10px; }
+  .btn-secondary {
+    flex: 1; padding: 10px; background: transparent;
+    border: 1px solid var(--border); border-radius: 8px;
+    color: var(--muted); font-size: 0.88rem; cursor: pointer;
+  }
+  .btn-primary {
+    flex: 1; padding: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; border-radius: 8px;
+    color: #000; font-weight: 700; font-size: 0.88rem; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<!-- Camera setup modal -->
+<div id="cam-modal">
+  <div class="box">
+    <h2>Start Camera Client</h2>
+    <p>
+      In a <strong>second terminal</strong>, run the camera client so eye tracking
+      and emotion detection can validate your gaze. Click the command to copy it.
+    </p>
+    <div class="cmd-box" id="cam-cmd" title="Click to copy"></div>
+    <p style="font-size:0.78rem; color: var(--muted);">
+      You can also skip this and proceed without camera validation — gaze data
+      will still be recorded from the 360° viewer.
+    </p>
+    <div class="row">
+      <button class="btn-secondary" onclick="dismissModal(false)">Skip Camera</button>
+      <button class="btn-primary"   onclick="dismissModal(true)">Camera is Running →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Top HUD bar -->
+<div id="hud-top">
+  <div class="hud-badge">SESSION <span id="sid-display"></span></div>
+  <div class="hud-badge" id="timer-badge">⏱ <span id="timer-text">3:00</span></div>
+  <div class="hud-badge"><span id="gaze-dir-text">Gaze: —</span></div>
+  <div class="hud-badge"><span id="emotion-text">Emotion: —</span></div>
+  <div class="hud-badge" id="cam-status-badge">📷 Camera: <span id="cam-status">not connected</span></div>
+  <div class="spacer"></div>
+  <button id="btn-end" onclick="endSession()">End Session</button>
+</div>
+
+<!-- Current part overlay -->
+<div id="part-overlay">
+  <div id="part-name">Exploring…</div>
+  <div id="part-dwell">Dwell: 0.0s</div>
+</div>
+
+<!-- Side panel: live stats + dwell list -->
+<div id="side-panel">
+  <div class="sp-row">
+    <span class="sp-label">Validated</span>
+    <div class="dot" id="valid-dot"></div>
+    <span class="sp-val" id="valid-text">—</span>
+  </div>
+  <div class="sp-row">
+    <span class="sp-label">EAR avg</span>
+    <div class="bar-wrap"><div class="bar-fill" id="ear-bar" style="width:0%"></div></div>
+    <span class="sp-val" id="ear-text">—</span>
+  </div>
+  <div id="dwell-list">
+    <div style="font-size:0.7rem;color:var(--muted);margin-bottom:6px;">TOP AREAS (dwell s)</div>
+    <div id="dwell-rows"></div>
+  </div>
+</div>
+
+<!-- 360° panorama + hidden mask canvas -->
+<div id="panorama"></div>
+<canvas id="canvas-mask"></canvas>
+
+<script>
+// ─── Config ──────────────────────────────────────────────────────────────────
+const params     = new URLSearchParams(location.search);
+const SESSION_ID = params.get("session_id") || "";
+const DURATION   = parseInt(params.get("duration") || "180");   // seconds
+
+document.getElementById("sid-display").textContent = SESSION_ID;
+document.getElementById("cam-cmd").textContent =
+  `python pipeline/camera_client/client.py ${SESSION_ID}`;
+
+// ─── Hotspot color map (must match mask.png) ──────────────────────────────────
+const PARTS = {
+  "ff0000": "Steering Wheel",
+  "ffff00": "Cluster",
+  "0000ff": "AC",
+  "00ff00": "Infotainment",
+  "00ffff": "Gear",
+  "ff00ff": "Handrest",
+  "ff7f00": "Accelerator/Brake",
+  "8000ff": "Driver Door",
+  "7fff00": "Windshield",
+  "00bfff": "Passenger Dashboard",
+  "ff1493": "Passenger Door",
+  "008080": "Passenger Seat",
+  "ff6347": "Driver Seat",
+  "ffd700": "Sun Visor",
+  "7fffd4": "Rear View Mirror",
+  "adff2f": "Back Seat",
+  "9400d3": "Sunroof"
+};
+
+const EMOTION_COLOR = {
+  Happy: "#22c55e", Surprise: "#f59e0b", Neutral: "#6b7280",
+  Sad: "#60a5fa", Fear: "#a78bfa", Angry: "#ef4444", Disgust: "#f97316"
+};
+
+// ─── State ────────────────────────────────────────────────────────────────────
+const timeSpent   = {};
+Object.values(PARTS).forEach(p => timeSpent[p] = 0);
+
+let camGaze       = "center";
+let camEmotion    = "unknown";
+let camEAR        = 0;
+let camConnected  = false;
+let ws            = null;
+let sessionEnded  = false;
+let remaining     = DURATION;
+
+// ─── Modal ────────────────────────────────────────────────────────────────────
+document.getElementById("cam-cmd").onclick = () => {
+  navigator.clipboard?.writeText(document.getElementById("cam-cmd").textContent);
+  document.getElementById("cam-cmd").textContent += "  ✓ copied";
+  setTimeout(() => {
+    document.getElementById("cam-cmd").textContent =
+      `python pipeline/camera_client/client.py ${SESSION_ID}`;
+  }, 2000);
+};
+
+function dismissModal(cameraRunning) {
+  document.getElementById("cam-modal").style.display = "none";
+  if (!cameraRunning) {
+    document.getElementById("cam-status").textContent = "skipped";
+  }
+}
+
+// ─── Pannellum viewer ─────────────────────────────────────────────────────────
+const viewer = pannellum.viewer("panorama", {
+  type:      "equirectangular",
+  panorama:  "/assets/car3.jpg",
+  autoLoad:  true,
+  showControls: false,
+});
+
+// ─── Mask canvas ──────────────────────────────────────────────────────────────
+const maskImg = new Image();
+maskImg.src   = "/assets/mask.png";
+const maskCanvas = document.getElementById("canvas-mask");
+const ctx        = maskCanvas.getContext("2d");
+
+maskImg.onload = () => {
+  maskCanvas.width  = maskImg.width;
+  maskCanvas.height = maskImg.height;
+  ctx.drawImage(maskImg, 0, 0);
+  setInterval(trackTick, 200);
+};
+
+maskImg.onerror = () => console.warn("mask.png not found — hotspot tracking disabled");
+
+function rgbToHex(r, g, b) {
+  return [r,g,b].map(x => x.toString(16).padStart(2,"0")).join("");
+}
+
+function trackTick() {
+  if (sessionEnded) return;
+  const yaw   = viewer.getYaw();
+  const pitch = viewer.getPitch();
+  const hfov  = viewer.getHfov();
+
+  const px = Math.floor((yaw + 180) / 360 * maskCanvas.width);
+  const py = Math.floor((90 - pitch) / 180 * maskCanvas.height);
+  const px_safe = Math.max(0, Math.min(maskCanvas.width  - 1, px));
+  const py_safe = Math.max(0, Math.min(maskCanvas.height - 1, py));
+
+  const pixel = ctx.getImageData(px_safe, py_safe, 1, 1).data;
+  const hex   = rgbToHex(pixel[0], pixel[1], pixel[2]);
+
+  let part = PARTS[hex];
+
+  // Smart zoom logic: steering vs cluster
+  if (hex === "ff0000" || hex === "ffff00") {
+    part = hfov > 55 ? PARTS["ff0000"] : PARTS["ffff00"];
+  }
+
+  if (!part) return;
+
+  timeSpent[part] += 0.2;
+  const validated = !camConnected || camGaze === "center";
+
+  // Send gaze event via WebSocket
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({
+      type:      "gaze",
+      part,
+      timestamp: Date.now() / 1000,
+      validated,
+      emotion:   camEmotion,
+      ear_avg:   camEAR,
+    }));
+  }
+
+  // Update part overlay
+  const color = EMOTION_COLOR[camEmotion] || "var(--accent)";
+  document.getElementById("part-name").style.color = color;
+  document.getElementById("part-name").textContent = part;
+  document.getElementById("part-dwell").textContent =
+    `Dwell: ${timeSpent[part].toFixed(1)}s${validated ? "" : "  ⚠ unvalidated"}`;
+
+  updateSidePanel();
+}
+
+function updateSidePanel() {
+  // Validation status
+  const validated = !camConnected || camGaze === "center";
+  const dot  = document.getElementById("valid-dot");
+  const vtxt = document.getElementById("valid-text");
+  if (!camConnected) {
+    dot.className = "dot yellow"; vtxt.textContent = "no camera";
+  } else if (validated) {
+    dot.className = "dot green";  vtxt.textContent = "confirmed";
+  } else {
+    dot.className = "dot red";    vtxt.textContent = "looking away";
+  }
+
+  // EAR bar
+  const earPct = Math.min(100, camEAR * 300);
+  document.getElementById("ear-bar").style.width = earPct + "%";
+  document.getElementById("ear-text").textContent = camEAR ? camEAR.toFixed(3) : "—";
+
+  // Top parts list
+  const sorted = Object.entries(timeSpent)
+    .filter(([, v]) => v > 0)
+    .sort(([,a],[,b]) => b - a)
+    .slice(0, 6);
+
+  const rows = sorted.map(([part, t]) =>
+    `<div class="dwell-row"><span>${part}</span><strong>${t.toFixed(1)}s</strong></div>`
+  ).join("");
+  document.getElementById("dwell-rows").innerHTML = rows || '<div class="dwell-row">No data yet</div>';
+}
+
+// ─── WebSocket to backend ─────────────────────────────────────────────────────
+function connectWS() {
+  const host = location.hostname;
+  ws = new WebSocket(`ws://${host}:${location.port}/ws/gaze?session_id=${SESSION_ID}`);
+
+  ws.onopen = () => console.log("[WS] gaze connected");
+
+  ws.onmessage = (ev) => {
+    try {
+      const d = JSON.parse(ev.data);
+      if (d.type === "camera_update") {
+        camConnected = true;
+        camGaze      = d.gaze_direction || "center";
+        camEmotion   = d.emotion || "unknown";
+        camEAR       = d.ear_avg || 0;
+
+        document.getElementById("cam-status").textContent = "connected ✔";
+        document.getElementById("cam-status").style.color = "var(--good)";
+        document.getElementById("gaze-dir-text").textContent = `Gaze: ${camGaze}`;
+        const emoEl = document.getElementById("emotion-text");
+        emoEl.textContent = `Emotion: ${camEmotion}`;
+        emoEl.style.color = EMOTION_COLOR[camEmotion] || "var(--text)";
+      }
+    } catch {}
+  };
+
+  ws.onclose = () => {
+    if (!sessionEnded) setTimeout(connectWS, 2000);
+  };
+}
+
+// ─── Timer ────────────────────────────────────────────────────────────────────
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  return `${m}:${String(s % 60).padStart(2,"0")}`;
+}
+
+const timerInterval = setInterval(() => {
+  remaining--;
+  document.getElementById("timer-text").textContent = formatTime(remaining);
+  if (remaining <= 30) {
+    document.getElementById("timer-badge").classList.add("urgent");
+  }
+  if (remaining <= 0) {
+    clearInterval(timerInterval);
+    endSession();
+  }
+}, 1000);
+
+// ─── End session ─────────────────────────────────────────────────────────────
+async function endSession() {
+  if (sessionEnded) return;
+  sessionEnded = true;
+  clearInterval(timerInterval);
+  document.getElementById("btn-end").disabled = true;
+  document.getElementById("btn-end").textContent = "Ending…";
+
+  if (ws) ws.close();
+
+  try {
+    await fetch(`/api/session/${SESSION_ID}/end`, { method: "POST" });
+  } catch (e) {
+    console.error("End session error:", e);
+  }
+
+  window.location.href = `/survey?session_id=${SESSION_ID}`;
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+if (!SESSION_ID) {
+  alert("No session ID — returning to registration.");
+  location.href = "/";
+}
+connectWS();
+</script>
+</body>
+</html>
